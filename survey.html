@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>자리배치 설문</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #F5F8F5; font-family: 'Noto Sans KR', sans-serif; color: #1A2B1E; }
+
+/* 헤더 */
+.hdr { background: #1B5C3F; padding: 14px 20px; position: sticky; top: 0; z-index: 10; }
+.hdr-title { font-size: 16px; font-weight: 700; color: white; }
+.hdr-sub   { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+
+/* 본문 */
+.body { max-width: 480px; margin: 0 auto; padding: 20px 16px 100px; }
+
+/* 카드 */
+.card {
+  background: white; border: 0.5px solid #DDE8DD;
+  border-radius: 16px; padding: 18px 16px; margin-bottom: 14px;
+}
+.card-title { font-size: 14px; font-weight: 700; color: #1A2B1E; margin-bottom: 4px; }
+.card-desc  { font-size: 12px; color: #9BA899; margin-bottom: 12px; line-height: 1.5; }
+.card-limit { font-size: 11px; color: #1B5C3F; font-weight: 600; float: right; }
+
+/* 이름 입력 */
+.name-input {
+  width: 100%; padding: 14px 16px; border-radius: 12px;
+  border: 1.5px solid #DDE8DD; font-size: 18px; font-weight: 700;
+  font-family: inherit; color: #1A2B1E; outline: none;
+  transition: border-color .15s; text-align: center;
+}
+.name-input:focus { border-color: #1B5C3F; }
+
+/* 이름 그리드 */
+.names-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.name-btn {
+  padding: 10px 6px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  font-family: inherit; cursor: pointer; transition: all .15s; text-align: center;
+  border: 1.5px solid #DDE8DD; background: white; color: #374151;
+  min-height: 44px;
+}
+.name-btn.on  { background: #E8F4EE; color: #1B5C3F; border-color: #1B5C3F; font-weight: 700; }
+.name-btn.dim { opacity: 0.35; cursor: not-allowed; }
+
+/* 앞자리 버튼 */
+.front-btns { display: flex; gap: 10px; }
+.front-btn {
+  flex: 1; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 600;
+  font-family: inherit; cursor: pointer; border: 1.5px solid #DDE8DD;
+  background: white; color: #6B7280; transition: all .15s; text-align: center;
+}
+.front-btn.yes { border-color: #16a34a; background: #dcfce7; color: #16a34a; }
+.front-btn.no  { border-color: #DDE8DD; background: #F3F4F6; color: #6B7280; }
+
+/* 별 평점 */
+.stars { display: flex; gap: 6px; justify-content: center; margin-top: 4px; }
+.star-btn { font-size: 36px; background: none; border: none; cursor: pointer; line-height: 1; padding: 4px; }
+
+/* 제출 버튼 */
+.submit-wrap {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: white; border-top: 0.5px solid #DDE8DD;
+  padding: 14px 16px; max-width: 480px; margin: 0 auto;
+}
+.submit-btn {
+  width: 100%; padding: 16px; border-radius: 14px; font-size: 16px;
+  font-weight: 700; font-family: inherit; cursor: pointer; border: none;
+  background: #1B5C3F; color: white; transition: background .15s;
+}
+.submit-btn:disabled { background: #9BA899; cursor: not-allowed; }
+
+/* 상태 화면 */
+.state-screen {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 40px 20px; text-align: center;
+}
+.state-icon  { font-size: 64px; margin-bottom: 16px; }
+.state-title { font-size: 20px; font-weight: 700; color: #1A2B1E; margin-bottom: 8px; }
+.state-desc  { font-size: 14px; color: #9BA899; line-height: 1.7; }
+
+/* 검색창 */
+.search-wrap { position: relative; margin-bottom: 10px; }
+.search-input {
+  width: 100%; padding: 10px 14px 10px 36px;
+  border-radius: 10px; border: 0.5px solid #DDE8DD;
+  font-size: 13px; font-family: inherit; color: #1A2B1E; outline: none;
+  background: #F8FAFC;
+}
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9BA899; font-size: 14px; }
+
+/* 스크롤바 */
+::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: #C8D4C8; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const SB_URL = 'https://iwqssszcvtubgkvotcdg.supabase.co';
+const SB_KEY = 'sb_publishable_0IXxfoA1O-rcXLHcsu2Umg_hUArsJY3';
+
+async function sbFetch(path, method, body) {
+  const res = await fetch(SB_URL + '/rest/v1/' + path, {
+    method: method || 'GET',
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'resolution=merge-duplicates,return=minimal' : ''
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) { const t = await res.text(); throw new Error(t); }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ─────────────────────────────────────────────────
+//  초기화
+// ─────────────────────────────────────────────────
+const QM = [
+  { key:'Q1', label:'친밀 관계',    desc:'옆자리에 앉고 싶은 친구를 골라주세요', max:3 },
+  { key:'Q2', label:'학습 관계',    desc:'함께 공부하고 싶은 친구를 골라주세요', max:3 },
+  { key:'Q3', label:'지지 관계',    desc:'힘들 때 이야기하고 싶은 친구를 골라주세요', max:3 },
+  { key:'Q4', label:'긍정 영향력',  desc:'반 분위기를 좋게 만드는 친구를 골라주세요', max:3 },
+  { key:'Q5', label:'집중 방해 😶',  desc:'가까우면 집중이 어려운 친구 (익명 처리됩니다)', max:2 },
+];
+
+const params = new URLSearchParams(location.search);
+const CLASS_ID = params.get('class') || '';
+
+let classData = null;
+let myName = '';
+let answers = { Q1:[], Q2:[], Q3:[], Q4:[], Q5:[], wantFront: null, self: 0 };
+let phase = 'loading';
+
+// ─────────────────────────────────────────────────
+//  렌더
+// ─────────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  if (phase === 'loading') {
+    app.innerHTML = `<div class="state-screen"><div class="state-icon">⏳</div><div class="state-title">불러오는 중...</div></div>`;
+    return;
+  }
+  if (phase === 'noconfig') {
+    app.innerHTML = `<div class="state-screen"><div class="state-icon">⚙️</div><div class="state-title">설정이 필요합니다</div><div class="state-desc">선생님이 seating.html에서<br>Supabase 설정 후 설문을 공개해야 합니다.</div></div>`;
+    return;
+  }
+  if (phase === 'noclass') {
+    app.innerHTML = `<div class="state-screen"><div class="state-icon">🔍</div><div class="state-title">설문을 찾을 수 없습니다</div><div class="state-desc">링크가 올바른지 확인하거나<br>선생님께 새 링크를 요청하세요.<br><br><small style="color:#ccc">ID: ${CLASS_ID||'없음'}</small></div></div>`;
+    return;
+  }
+  if (phase === 'done') {
+    app.innerHTML = `<div class="state-screen"><div class="state-icon">🎉</div><div class="state-title">제출 완료!</div><div class="state-desc">${myName}의 설문이 선생님께 전달됐어요.<br>창을 닫아도 됩니다.</div></div>`;
+    return;
+  }
+  if (phase === 'error') {
+    app.innerHTML = `<div class="state-screen"><div class="state-icon">😥</div><div class="state-title">오류가 발생했어요</div><div class="state-desc">잠시 후 다시 시도해주세요.<br>계속되면 선생님께 문의하세요.</div></div>`;
+    return;
+  }
+  if (phase === 'name') {
+    renderNameSelect();
+    return;
+  }
+  if (phase === 'survey') {
+    renderSurvey();
+    return;
+  }
+}
+
+// ─────────────────────────────────────────────────
+//  이름 선택 화면
+// ─────────────────────────────────────────────────
+function renderNameSelect() {
+  const names = classData.names || [];
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="hdr">
+      <div class="hdr-title">🪑 자리배치 설문</div>
+      <div class="hdr-sub">본인 이름을 선택하세요</div>
+    </div>
+    <div class="body">
+      <div class="card">
+        <div class="card-title">내 이름</div>
+        <div class="card-desc">명단에서 본인 이름을 찾아 눌러주세요</div>
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" id="nameSearch" placeholder="이름 검색..." oninput="filterNames(this.value)">
+        </div>
+        <div class="names-grid" id="namesGrid"></div>
+      </div>
+    </div>`;
+  renderNamesGrid(names, '');
+}
+
+function renderNamesGrid(names, filter) {
+  const grid = document.getElementById('namesGrid');
+  if (!grid) return;
+  const filtered = filter ? names.filter(n => n.includes(filter)) : names;
+  grid.innerHTML = filtered.map(n => `
+    <button class="name-btn" onclick="selectMyName('${n}')">${n}</button>
+  `).join('');
+}
+
+function filterNames(val) {
+  renderNamesGrid(classData.names || [], val);
+}
+
+function selectMyName(name) {
+  myName = name;
+  answers = { Q1:[], Q2:[], Q3:[], Q4:[], Q5:[], wantFront: null, self: 0 };
+  phase = 'survey';
+  render();
+}
+
+// ─────────────────────────────────────────────────
+//  설문 화면
+// ─────────────────────────────────────────────────
+function renderSurvey() {
+  const names = (classData.names || []).filter(n => n !== myName);
+  const app = document.getElementById('app');
+
+  const qHtml = QM.map(q => {
+    const sel = answers[q.key] || [];
+    const atMax = sel.length >= q.max;
+    const btnHtml = names.map(n => {
+      const on = sel.includes(n);
+      const dim = !on && atMax;
+      return `<button class="name-btn ${on?'on':''} ${dim?'dim':''}"
+        onclick="toggleName('${q.key}',${q.max},'${n}')">${n}</button>`;
+    }).join('');
+    return `
+      <div class="card">
+        <div class="card-title">${q.label} <span class="card-limit">${sel.length}/${q.max}명</span></div>
+        <div class="card-desc">${q.desc}</div>
+        <div class="names-grid">${btnHtml}</div>
+      </div>`;
+  }).join('');
+
+  const wf = answers.wantFront;
+  const self = answers.self;
+
+  app.innerHTML = `
+    <div class="hdr">
+      <div class="hdr-title">🪑 자리배치 설문</div>
+      <div class="hdr-sub">${myName} · 아래 질문에 답해주세요</div>
+    </div>
+    <div class="body">
+      ${qHtml}
+
+      <div class="card">
+        <div class="card-title">앞자리 희망</div>
+        <div class="card-desc">칠판 가까운 앞쪽 자리를 원하나요?</div>
+        <div class="front-btns">
+          <button class="front-btn ${wf===true?'yes':''}" onclick="setFront(true)">✋ 앞자리 원해요</button>
+          <button class="front-btn ${wf===false?'no':''}" onclick="setFront(false)">😊 상관없어요</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">자기 인식 척도</div>
+        <div class="card-desc">나는 우리 반에서 친구들과 얼마나 잘 어울린다고 생각하나요?</div>
+        <div class="stars">
+          ${[1,2,3,4,5].map(n=>`<button class="star-btn" onclick="setSelf(${n})" style="color:${n<=self?'#F59E0B':'#E5E7EB'}"">★</button>`).join('')}
+        </div>
+        <div style="text-align:center;font-size:12px;color:#9BA899;margin-top:6px">${['','매우 낮음','낮음','보통','높음','매우 높음'][self]||'선택해주세요'}</div>
+      </div>
+    </div>
+    <div class="submit-wrap">
+      <button class="submit-btn" id="submitBtn" onclick="submitSurvey()">제출하기</button>
+    </div>`;
+}
+
+function toggleName(qKey, max, name) {
+  const arr = answers[qKey] || [];
+  if (arr.includes(name)) {
+    answers[qKey] = arr.filter(n => n !== name);
+  } else if (arr.length < max) {
+    answers[qKey] = [...arr, name];
+  }
+  renderSurvey();
+}
+
+function setFront(val) { answers.wantFront = val; renderSurvey(); }
+function setSelf(val)  { answers.self = val; renderSurvey(); }
+
+// ─────────────────────────────────────────────────
+//  제출
+// ─────────────────────────────────────────────────
+async function submitSurvey() {
+  const btn = document.getElementById('submitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '제출 중...'; }
+  try {
+    await sbFetch('survey_responses?on_conflict=class_id,student_name', 'POST', {
+      class_id: CLASS_ID,
+      student_name: myName,
+      response: answers,
+      submitted_at: new Date().toISOString()
+    });
+    phase = 'done'; render();
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '다시 시도'; }
+    alert('제출 오류: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────
+//  초기 로드
+// ─────────────────────────────────────────────────
+async function init() {
+  render();
+  if (!CLASS_ID) { phase = 'noclass'; render(); return; }
+  try {
+    const data = await sbFetch(`app_settings?key=eq.class_${CLASS_ID}&select=value&limit=1`);
+    if (!data || !data[0]) { phase = 'noclass'; render(); return; }
+    classData = data[0].value;
+    phase = 'name'; render();
+  } catch(e) {
+    console.error(e);
+    phase = 'error'; render();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
